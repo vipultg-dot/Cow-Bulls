@@ -7,7 +7,7 @@
   <style>
     :root{
       --bg:#0e1116; --panel:#151a22; --panel2:#1b222d; --border:#263244;
-      --text:#e9edf2; --muted:#a8b3bf; --accent:#4f8cff; --ok:#22c55e; --bad:#ef4444;
+      --text:#e9edf2; --muted:#a8b3bf; --accent:#4f8cff; --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -28,12 +28,24 @@
     h1{margin:0 0 6px 0; font-size:34px; letter-spacing:.3px}
     .sub{color:var(--muted); font-size:16px}
 
-    .top{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px}
-    .toggle{display:inline-flex; align-items:center; gap:12px; cursor:pointer; user-select:none; font-size:15px}
+    .top{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px}
+
+    .modes{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .seg{
+      display:inline-flex; border:1px solid var(--border); border-radius:12px; overflow:hidden;
+      background:#0f151e;
+    }
+    .seg button{
+      background:transparent; color:var(--muted); border:0; padding:10px 14px; cursor:pointer; font-weight:700; font-size:13px;
+    }
+    .seg button.active{ background:#152034; color:#e9edf2 }
+
+    .toggle{display:inline-flex; align-items:center; gap:12px; user-select:none; font-size:15px}
     .switch{width:50px; height:28px; border-radius:999px; background:#1a2433; border:1px solid #2c3a52; position:relative}
     .switch:after{content:""; position:absolute; top:50%; left:4px; width:20px; height:20px; border-radius:999px; transform:translateY(-50%); background:#cfd7e2; transition:all .2s}
     .switch.on{background:#203353; border-color:#35558f}
     .switch.on:after{left:26px; background:var(--accent)}
+    .toggle[aria-disabled="true"]{opacity:.45; pointer-events:none}
 
     /* TWO-COLUMN LAYOUT */
     .grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:20px}
@@ -59,7 +71,7 @@
 
     .list{border:1px solid var(--border); border-radius:14px; overflow:hidden; background:#0e141d}
     .rowItem{
-      display:grid; grid-template-columns:100px 1fr 260px; gap:16px;
+      display:grid; grid-template-columns:110px 1fr 1fr; gap:16px;
       padding:14px 16px; align-items:center; border-top:1px solid #1b2638
     }
     .rowItem:first-child{border-top:none}
@@ -72,6 +84,7 @@
       color:var(--muted); font-size:16px
     }
     .badge .icon{font-size:22px; line-height:1}
+    .varHint{color:var(--warn); font-weight:700; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:16px}
 
     .summary{padding:16px; background:#0f151e; border:1px solid #27344a; border-radius:12px}
     .win{color:var(--ok); font-weight:800; letter-spacing:.2px}
@@ -80,7 +93,6 @@
 
     .footer{margin-top:18px; color:var(--muted); font-size:12px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap}
 
-    /* little toast */
     .toast{
       position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
       background:#0f151e; border:1px solid #2a3a52; color:#e9edf2;
@@ -95,19 +107,35 @@
   </div>
   <div id="toast" class="toast">Copied to clipboard</div>
 
-  <!-- React 18 via CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
   <script>
-    // ---------- Game Logic ----------
-    function generateTarget(){
+    // ---------- Helpers & Game Logic ----------
+    const e = React.createElement;
+
+    function randomChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    // Beginner: 5 unique digits from 1..9 (no zero anywhere)
+    function generateBeginner(){
+      const digits = ['1','2','3','4','5','6','7','8','9'];
+      const pick = [];
+      while(pick.length<5){
+        const d = randomChoice(digits);
+        if(!pick.includes(d)) pick.push(d);
+      }
+      return pick.join('');
+    }
+    // Game/Expert: first digit 1..9, then any 0..9 (repeats allowed)
+    function generateGeneral(){
       let s = String(Math.floor(Math.random()*9)+1);
       for(let i=1;i<5;i++) s += String(Math.floor(Math.random()*10));
       return s;
     }
+
     function countDigits(str){ const m={}; for(const ch of str) m[ch]=(m[ch]||0)+1; return m; }
-    // cows include bulls
+
+    // cows include bulls (so cows ≥ bulls)
     function scoreGuess(guess, target){
       const g = guess.split(""), t = target.split("");
       let bulls = 0; for(let i=0;i<5;i++) if(g[i]===t[i]) bulls++;
@@ -116,115 +144,162 @@
       return { cows: total, bulls };
     }
 
-    // ---------- Sharing ----------
-    function buildShareText({attempts, status, max, target, hard}){
-      const header = `Cows & Bulls — 5-digit${hard?' (Hard)':''}\nRule: cows include bulls`;
+    function buildShareText({attempts, status, max, target, isExpert, hard}){
+      const modeStr = isExpert ? 'Expert' : (hard ? 'Game (Hard)' : 'Game/Beginner');
+      const header = `Cows & Bulls — 5-digit — ${modeStr}`;
       const result = status==='won' ? `Result: ${attempts.length}/${max} ✅` : `Result: ${attempts.length}/${max} ❌`;
-      const lines = attempts.map(a => `${a.guess}  |  🐄 ${a.cows}  🐂 ${a.bulls}`).join('\n');
-      const answer = `Answer: ${target}`;
-      const url = location.href;
-      return `${header}\n${result}\n\n${lines}\n\n${answer}\n${url}`;
+      const lines = attempts.map(a => isExpert ? `${a.guess}  |  ${a.varText}` : `${a.guess}  |  🐄 ${a.cows}  🐂 ${a.bulls}`).join('\n');
+      return `${header}\n${result}\n\n${lines}\n\nAnswer: ${target}\n${location.href}`;
     }
     function copyToClipboard(text){
-      if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(text); }
-      const ta = document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
-      ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+      const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
       return Promise.resolve();
     }
     function showToast(msg){
-      const el = document.getElementById('toast');
-      el.textContent = msg || 'Copied to clipboard';
-      el.style.display = 'block';
-      setTimeout(()=>{ el.style.display='none'; }, 1400);
+      const el = document.getElementById('toast'); el.textContent = msg || 'Copied'; el.style.display='block'; setTimeout(()=>{ el.style.display='none'; }, 1400);
     }
 
-    // ---------- React UI ----------
-    const e = React.createElement;
-
+    // ---------- Components ----------
     function Chip(props){ return e('span',{className:'chip'}, props.children); }
     function Badge({icon,label,value}){
       return e('span',{className:'badge'},
-        e('span',{className:'icon'},icon),' ',label,' ',
-        e('strong',null,' '+value)
+        e('span',{className:'icon'},icon),' ',label,' ', e('strong',null,' '+value)
       );
     }
 
     function App(){
-      const [target,setTarget] = React.useState(generateTarget);
+      const [mode,setMode] = React.useState('game'); // 'beginner' | 'game' | 'expert'
+      const [target,setTarget] = React.useState(generateGeneral);
       const [attempts,setAttempts] = React.useState([]);
       const [input,setInput] = React.useState("");
       const [hard,setHard] = React.useState(false);
-      const [status,setStatus] = React.useState("playing"); // playing | won | lost
+      const [status,setStatus] = React.useState("playing");
+      const [baseVar,setBaseVar] = React.useState(null); // {cows,bulls} for Expert baseline
       const MAX = 10;
+
+      // regenerate when mode changes
+      React.useEffect(()=>{ reset(mode, true); }, [mode]);
+
+      function genByMode(m){
+        if(m==='beginner') return generateBeginner();
+        return generateGeneral();
+      }
+
+      function validateGuess(v, m){
+        if(!/^\d{5}$/.test(v)) return "Enter exactly 5 digits.";
+        if(m==='beginner'){
+          if(v.includes('0')) return "No zero allowed in Beginner mode.";
+          const s = new Set(v); if(s.size!==5) return "All digits must be unique in Beginner mode.";
+        }else{
+          if(v[0]==='0') return "First digit cannot be 0.";
+        }
+        return null;
+      }
+
+      function reset(m = mode, fromModeSwitch=false){
+        setTarget(genByMode(m));
+        setAttempts([]); setInput(""); setStatus("playing"); setBaseVar(null);
+        if(fromModeSwitch){ /* keep hard value */ } else { /* no-op */ }
+      }
+
+      function formatDelta(d){
+        if(d===0) return '';
+        return (d>0?`+${d}`:`${d}`); // -1, -2 etc already have minus
+      }
+
+      function submit(){
+        if(status!=='playing') return;
+        const v = input.trim();
+        const err = validateGuess(v, mode);
+        if(err) { showToast(err); return; }
+
+        const res = scoreGuess(v, target);
+
+        let varText = null;
+        if(mode==='expert'){
+          if(!baseVar){
+            setBaseVar({cows:res.cows, bulls:res.bulls});
+            varText = `x cows, y bulls`;
+          }else{
+            const dc = res.cows - baseVar.cows;
+            const db = res.bulls - baseVar.bulls;
+            const cPart = 'x' + (formatDelta(dc) ? formatDelta(dc) : '');
+            const bPart = 'y' + (formatDelta(db) ? formatDelta(db) : '');
+            varText = `${cPart} cows, ${bPart} bulls`;
+          }
+        }
+
+        const nextEntry = { idx: attempts.length+1, guess: v, cows: res.cows, bulls: res.bulls, varText };
+        const next = [...attempts, nextEntry];
+        setAttempts(next); setInput("");
+
+        if(res.bulls===5) setStatus("won");
+        else if(next.length>=MAX) setStatus("lost");
+      }
 
       const remaining = Math.max(0, MAX - attempts.length);
       const locked = status!=='playing';
-      const showCounts = !hard || status!=='playing';
+      const showCounts = (mode!=='expert') && (!hard || status!=='playing');
+      const hardDisabled = mode==='expert';
 
-      const reset = ()=>{
-        setTarget(generateTarget()); setAttempts([]); setInput(""); setStatus("playing");
-      };
-
-      const submit = ()=>{
-        const v = input.trim();
-        if(!/^\d{5}$/.test(v)) return;
-        if(v[0]==='0') return;
-        const res = scoreGuess(v, target);
-        const next = [...attempts, { idx: attempts.length+1, guess: v, ...res }];
-        setAttempts(next); setInput("");
-        if(res.bulls===5) setStatus("won"); else if(next.length>=MAX) setStatus("lost");
-      };
-
-      const share = async ()=>{
-        const text = buildShareText({attempts, status, max: MAX, target, hard});
-        try{ await copyToClipboard(text); showToast('Copied results!'); }
-        catch{ showToast('Copy failed'); }
-      };
+      const modeDesc = mode==='beginner'
+        ? 'Beginner: no repetition, no zero anywhere.'
+        : (mode==='game' ? 'Game: repeats allowed, first digit ≠ 0.' : 'Expert: feedback in variables x (cows) & y (bulls).');
 
       return e('div',{className:'card'},
-        // Top bar
+        // Header
         e('div',{className:'top'},
           e('div',null,
             e('h1',null,'Cows & Bulls'),
-            e('div',{className:'sub'},'Guess the 5-digit number in 10 tries. Repeats allowed. First digit can’t be 0.')
+            e('div',{className:'sub'}, modeDesc, ' 10 tries. Cows include bulls.')
           ),
-          e('label',{className:'toggle',title:'Hard Mode hides the counts until the game ends.', onClick:()=>setHard(h=>!h)},
-            e('span',null,'Hard Mode'),
-            e('div',{className:'switch'+(hard?' on':'')})
+          e('div',{className:'modes'},
+            e('div',{className:'seg'},
+              e('button',{className: mode==='beginner'?'active':'', onClick:()=>setMode('beginner')}, 'Beginner'),
+              e('button',{className: mode==='game'?'active':'', onClick:()=>setMode('game')}, 'Game'),
+              e('button',{className: mode==='expert'?'active':'', onClick:()=>setMode('expert')}, 'Expert')
+            ),
+            e('label',{className:'toggle', 'aria-disabled': hardDisabled, title: hardDisabled ? 'Hard Mode is disabled in Expert mode.' : 'Hard Mode hides counts until the end.'},
+              e('span',null,'Hard Mode'),
+              e('div',{className:'switch'+(hard?' on':''), onClick:()=>{ if(!hardDisabled) setHard(h=>!h); }})
+            )
           )
         ),
 
-        // Two-column grid
+        // Two columns
         e('div',{className:'grid'},
 
-          // LEFT panel
+          // LEFT: input + info
           e('div',{className:'panel'},
             e('div',{className:'inputRow'},
               e('input',{
-                type:'text', inputMode:'numeric', pattern:'\\d*', placeholder:'Enter 5 digits (first ≠ 0)',
+                type:'text', inputMode:'numeric', pattern:'\\d*', placeholder: mode==='beginner' ? 'Enter 5 unique digits (1–9)' : 'Enter 5 digits (first ≠ 0)',
                 value:input, maxLength:5, disabled:locked,
-                onChange:(ev)=>{ const v=ev.target.value.replace(/[^0-9]/g,'').slice(0,5); setInput(v); },
-                onKeyDown:(ev)=>{ if(ev.key==='Enter' && !locked){ if(/^\d{5}$/.test(input) && input[0]!=='0') submit(); } }
+                onChange:(ev)=>{ const raw=ev.target.value.replace(/[^0-9]/g,'').slice(0,5); setInput(raw); },
+                onKeyDown:(ev)=>{ if(ev.key==='Enter' && !locked){ submit(); } }
               }),
-              e('button',{onClick:submit, disabled:locked || !/^\d{5}$/.test(input) || input[0]==='0'}, 'Submit'),
-              e('button',{className:'ghost', onClick:reset}, 'New Game')
+              e('button',{onClick:submit, disabled:locked || !/^\d{5}$/.test(input) || (mode!=='beginner' ? (input[0]==='0') : (new Set(input).size!==5 || input.includes('0')))}, 'Submit'),
+              e('button',{className:'ghost', onClick:()=>reset()}, 'New Game')
             ),
 
             e('div',{className:'chips'},
+              e(Chip,null,'Mode: ', e('strong',null, mode.charAt(0).toUpperCase()+mode.slice(1))),
               e(Chip,null,'Attempts ', e('strong',null,attempts.length,'/',MAX)),
               e(Chip,null,'Remaining ', e('strong',null,remaining)),
-              e(Chip,null,'First digit ≠ 0'),
-              e(Chip,null,'Repeats ✓'),
-              e(Chip,null,'Rule: cows include bulls')
+              mode==='beginner' ? e(Chip,null,'No 0 • Unique digits')
+                : e(Chip,null,'First digit ≠ 0'),
+              e(Chip,null,'Rule: cows ⊇ bulls')
             ),
 
             attempts.length===0
               ? e('div',{className:'summary help', style:{marginTop:'14px'}},
                   e('div',null,'Type your first guess and press Enter.'),
                   e('ul',null,
-                    e('li',null,'You have 10 attempts to get 5 cows and 5 bulls.'),
+                    e('li',null,'You have 10 attempts.'),
                     e('li',null,'A ', e('strong',null,'cow'), ' = digit exists; a ', e('strong',null,'bull'), ' = same digit in the correct place.'),
-                    e('li',null,e('strong',null,'Cows include bulls'), ' (so cows ≥ bulls).')
+                    e('li',null,'Cows include bulls (cows ≥ bulls).'),
+                    mode==='expert' ? e('li',null, e('strong',null,'Expert'), ': first guess defines ', e('strong',null,'x'), ' (cows) and ', e('strong',null,'y'), ' (bulls). Next guesses show relative changes like ', e('span',{className:'varHint'},'x-1, y-2'), '.') : null
                   )
                 )
               : null,
@@ -232,11 +307,8 @@
             status!=='playing' &&
               e('div',{className:'summary', style:{marginTop:'14px'}},
                 e('div',{className: status==='won'?'win':'lose'}, status==='won' ? 'You cracked it! 🎉' : 'Out of attempts.'),
-                e('div',{className:'help', style:{marginTop:'6px'}}, 'Answer: ', e('strong',null,target), hard?' • Hard Mode results revealed on the right.':''),
-                e('div',{style:{marginTop:'10px', display:'flex', gap:'10px', flexWrap:'wrap'}},
-                  e('button',{onClick:share}, 'Share Result'),
-                  e('button',{className:'ghost', onClick:reset}, 'Play Again')
-                )
+                e('div',{className:'help', style:{marginTop:'6px'}}, 'Answer: ', e('strong',null,target),
+                  hard && mode!=='expert' ? ' • Hard Mode results were hidden during play.' : '')
               ),
 
             e('div',{className:'footer', style:{marginTop:'14px'}},
@@ -245,7 +317,7 @@
             )
           ),
 
-          // RIGHT panel: attempts list
+          // RIGHT: attempts history
           e('div',{className:'panel'},
             e('div',{className:'list'},
               attempts.length===0
@@ -253,14 +325,27 @@
                 : attempts.map(a => e('div',{key:a.idx, className:'rowItem'},
                     e('div',{className:'kbd'},'#',a.idx),
                     e('div',{className:'kbd'},a.guess),
-                    showCounts
-                      ? e('div',null,
-                          e(Badge,{icon:'🐄',label:'Cows',value:a.cows}),
-                          e('span',{style:{marginLeft:'8px'}}),
-                          e(Badge,{icon:'🐂',label:'Bulls',value:a.bulls})
+                    mode==='expert'
+                      ? e('div',{className:'varHint'}, a.varText)
+                      : ( (!hard || status!=='playing')
+                          ? e('div',null,
+                              e(Badge,{icon:'🐄',label:'Cows',value:a.cows}),
+                              e('span',{style:{marginLeft:'8px'}}),
+                              e(Badge,{icon:'🐂',label:'Bulls',value:a.bulls})
+                            )
+                          : e('span',{className:'badge'},'— hidden —')
                         )
-                      : e('span',{className:'badge'},'— hidden —')
                   ))
+            ),
+
+            // Share / Play Again (shows when finished)
+            status!=='playing' && e('div',{style:{padding:'12px 16px'}},
+              e('button',{onClick: async ()=>{
+                  const text = buildShareText({attempts, status, max: MAX, target, isExpert: mode==='expert', hard});
+                  try{ await copyToClipboard(text); showToast('Copied results!'); } catch{ showToast('Copy failed'); }
+                }}, 'Share Result'),
+              e('span',{style:{marginLeft:'10px'}}),
+              e('button',{className:'ghost', onClick:()=>reset()}, 'Play Again')
             )
           )
         )
