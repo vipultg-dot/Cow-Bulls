@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!doctype html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1">&lt;meta charset="utf-8" /&gt;</p>
+<p class="p1">&lt;meta name="viewport" content="width=device-width,initial-scale=1" /&gt;</p>
+<p class="p1">&lt;title&gt;Cows &amp; Bulls — 5-Digit&lt;/title&gt;</p>
+<p class="p1">&lt;style&gt;</p>
+<p class="p1">/* same styles as before, trimmed for brevity */</p>
+<p class="p1">&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1">&lt;div id="root"&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1">&lt;script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1">function generateTarget(){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let digits = String(Math.floor(Math.random() * 9) + 1);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (let i=1;i&lt;5;i++) digits += String(Math.floor(Math.random() * 10));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return digits;</p>
+<p class="p1">}</p>
+<p class="p1">function scoreGuess(guess, target){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let bulls = 0;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const g = guess.split(""), t = target.split("");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const gLeft = [], tLeft = [];</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (let i=0;i&lt;5;i++){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (g[i] === t[i]) bulls++;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>else { gLeft.push(g[i]); tLeft.push(t[i]); }</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const counts = {};</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (const d of tLeft) counts[d] = (counts[d]||0)+1;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let cows = 0;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (const d of gLeft){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (counts[d] &gt; 0) { cows++; counts[d]--; }</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return { cows, bulls };</p>
+<p class="p1">}</p>
+<p class="p1">function useGame(){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [target,setTarget] = React.useState(generateTarget);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [attempts,setAttempts] = React.useState([]);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [input,setInput] = React.useState("");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [hard,setHard] = React.useState(false);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [status,setStatus] = React.useState("playing");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const MAX = 10;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const reset=()=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setTarget(generateTarget());</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setAttempts([]); setInput(""); setStatus("playing");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const submit=()=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const trimmed = input.trim();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (!/^[0-9]{5}$/.test(trimmed)) return;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (trimmed[0] === "0") return;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const { cows, bulls } = scoreGuess(trimmed, target);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const entry = { guess: trimmed, cows, bulls, idx: attempts.length+1 };</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const next = [...attempts, entry];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setAttempts(next); setInput("");</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (bulls === 5) setStatus("won");</p>
+<p class="p1"><span class="Apple-converted-space">    </span>else if (next.length &gt;= MAX) setStatus("lost");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return {target,attempts,input,setInput,submit,reset,hard,setHard,status,MAX};</p>
+<p class="p1">}</p>
+<p class="p1">function Chip({children}){ return React.createElement('span',{className:'pill'},children); }</p>
+<p class="p1">function App(){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const game = useGame();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const remaining = Math.max(0, game.MAX - game.attempts.length);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const locked = game.status !== 'playing';</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const maskedResult = (a) =&gt; game.hard &amp;&amp; game.status === 'playing'</p>
+<p class="p1"><span class="Apple-converted-space">    </span>? React.createElement('span',{className:'muted'}, "— hidden —")</p>
+<p class="p1"><span class="Apple-converted-space">    </span>: React.createElement(React.Fragment,null,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('span',{className:'badge'},'🐄 Cows ',React.createElement('strong',null,' '+a.cows)),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('span',{className:'badge'},'🐂 Bulls ',React.createElement('strong',null,' '+a.bulls))</p>
+<p class="p1"><span class="Apple-converted-space">      </span>);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const revealNow = game.hard &amp;&amp; game.status !== 'playing';</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return React.createElement('div',{className:'card'},</p>
+<p class="p1"><span class="Apple-converted-space">    </span>React.createElement('div',{className:'topbar'},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('div',null,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('h1',null,'Cows &amp; Bulls'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',{className:'sub'},'Guess the 5-digit number in 10 tries. Repeats allowed. First digit can’t be 0.')</p>
+<p class="p1"><span class="Apple-converted-space">      </span>),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('label',{className:'toggle',title:'Hard Mode hides the cows/bulls counts until the end.'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('span',null,'Hard Mode'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',{className:'switch '+(game.hard?'on':''),onClick:()=&gt;game.setHard(!game.hard)})</p>
+<p class="p1"><span class="Apple-converted-space">      </span>)</p>
+<p class="p1"><span class="Apple-converted-space">    </span>),</p>
+<p class="p1"><span class="Apple-converted-space">    </span>React.createElement('div',{className:'grid'},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('div',{className:'row inputRow'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('input',{</p>
+<p class="p1"><span class="Apple-converted-space">          </span>type:'text',inputMode:'numeric',pattern:'\\d*',placeholder:'Enter 5 digits (first ≠ 0)',</p>
+<p class="p1"><span class="Apple-converted-space">          </span>value:game.input,maxLength:5,disabled:locked,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>onChange:(e)=&gt;{const v=e.target.value.replace(/[^0-9]/g,'').slice(0,5);e.target.value=v;game.setInput(v);},</p>
+<p class="p1"><span class="Apple-converted-space">          </span>onKeyDown:(e)=&gt;{if(e.key==='Enter'&amp;&amp;!locked){if(/^[0-9]{5}$/.test(game.input)&amp;&amp;game.input[0]!=='0')game.submit();}}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('button',{onClick:game.submit,disabled:locked||!/^[0-9]{5}$/.test(game.input)||game.input[0]==='0'},'Submit'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('button',{className:'ghost',onClick:game.reset},'New Game')</p>
+<p class="p1"><span class="Apple-converted-space">      </span>),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('div',{className:'row'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement(Chip,null,'Attempts: ',React.createElement('strong',null,' ',game.attempts.length,'/',game.MAX)),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement(Chip,null,'Remaining: ',React.createElement('strong',null,' ',remaining)),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement(Chip,null,'First digit ≠ 0'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement(Chip,null,'Repeats ✓')</p>
+<p class="p1"><span class="Apple-converted-space">      </span>),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>game.attempts.length===0 ? React.createElement('div',{className:'summary'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',null,'Type your first guess above and press Enter.'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',{className:'sub'},'Scoring: A ',React.createElement('strong',null,'bull'),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>' means right digit in the right place; a ',React.createElement('strong',null,'cow'),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>' means the digit exists but in a different place.')):null,</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('div',{className:'list'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>game.attempts.map(a=&gt;React.createElement('div',{key:a.idx,className:'rowItem'},</p>
+<p class="p1"><span class="Apple-converted-space">          </span>React.createElement('div',{className:'kbd'},'#',a.idx),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>React.createElement('div',{className:'kbd'},a.guess),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>revealNow</p>
+<p class="p1"><span class="Apple-converted-space">            </span>? React.createElement(React.Fragment,null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>React.createElement('span',{className:'badge'},'🐄 Cows ',React.createElement('strong',null,' '+a.cows)),</p>
+<p class="p1"><span class="Apple-converted-space">                </span>React.createElement('span',{className:'badge'},'🐂 Bulls ',React.createElement('strong',null,' '+a.bulls))</p>
+<p class="p1"><span class="Apple-converted-space">              </span>)</p>
+<p class="p1"><span class="Apple-converted-space">            </span>: maskedResult(a)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>))</p>
+<p class="p1"><span class="Apple-converted-space">      </span>),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>(game.status!=='playing') &amp;&amp; React.createElement('div',{className:'summary'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',{className:game.status==='won'?'statusWin':'statusLose'},</p>
+<p class="p1"><span class="Apple-converted-space">          </span>game.status==='won'?'You cracked it! 🎉':'Out of attempts.'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',{className:'sub'},</p>
+<p class="p1"><span class="Apple-converted-space">          </span>'Answer: ',React.createElement('strong',null,game.target),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>game.hard?' • Hard Mode results revealed above.':'')</p>
+<p class="p1"><span class="Apple-converted-space">      </span>),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('div',{className:'help'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('ul',null,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>React.createElement('li',null,'You have 10 attempts to get 5 cows and 5 bulls.'),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>React.createElement('li',null,'Digits can repeat, but the first digit can’t be 0.'),</p>
+<p class="p1"><span class="Apple-converted-space">          </span>React.createElement('li',null,'Hard Mode: cows/bulls are hidden until you win/lose.')</p>
+<p class="p1"><span class="Apple-converted-space">        </span>)</p>
+<p class="p1"><span class="Apple-converted-space">      </span>),</p>
+<p class="p1"><span class="Apple-converted-space">      </span>React.createElement('div',{className:'foot'},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',null,'No data is collected. Everything runs in your browser.'),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',{className:'spacer'}),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>React.createElement('div',null,'Built for students ✨')</p>
+<p class="p1"><span class="Apple-converted-space">      </span>)</p>
+<p class="p1"><span class="Apple-converted-space">    </span>)</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+<p class="p1">const root = ReactDOM.createRoot(document.getElementById('root'));</p>
+<p class="p1">root.render(React.createElement(App));</p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
