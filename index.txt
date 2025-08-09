@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cows & Bulls — 5-Digit</title>
+<style>
+/* same styles as before, trimmed for brevity */
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+function generateTarget(){
+  let digits = String(Math.floor(Math.random() * 9) + 1);
+  for (let i=1;i<5;i++) digits += String(Math.floor(Math.random() * 10));
+  return digits;
+}
+function scoreGuess(guess, target){
+  let bulls = 0;
+  const g = guess.split(""), t = target.split("");
+  const gLeft = [], tLeft = [];
+  for (let i=0;i<5;i++){
+    if (g[i] === t[i]) bulls++;
+    else { gLeft.push(g[i]); tLeft.push(t[i]); }
+  }
+  const counts = {};
+  for (const d of tLeft) counts[d] = (counts[d]||0)+1;
+  let cows = 0;
+  for (const d of gLeft){
+    if (counts[d] > 0) { cows++; counts[d]--; }
+  }
+  return { cows, bulls };
+}
+function useGame(){
+  const [target,setTarget] = React.useState(generateTarget);
+  const [attempts,setAttempts] = React.useState([]);
+  const [input,setInput] = React.useState("");
+  const [hard,setHard] = React.useState(false);
+  const [status,setStatus] = React.useState("playing");
+  const MAX = 10;
+  const reset=()=>{
+    setTarget(generateTarget());
+    setAttempts([]); setInput(""); setStatus("playing");
+  };
+  const submit=()=>{
+    const trimmed = input.trim();
+    if (!/^[0-9]{5}$/.test(trimmed)) return;
+    if (trimmed[0] === "0") return;
+    const { cows, bulls } = scoreGuess(trimmed, target);
+    const entry = { guess: trimmed, cows, bulls, idx: attempts.length+1 };
+    const next = [...attempts, entry];
+    setAttempts(next); setInput("");
+    if (bulls === 5) setStatus("won");
+    else if (next.length >= MAX) setStatus("lost");
+  };
+  return {target,attempts,input,setInput,submit,reset,hard,setHard,status,MAX};
+}
+function Chip({children}){ return React.createElement('span',{className:'pill'},children); }
+function App(){
+  const game = useGame();
+  const remaining = Math.max(0, game.MAX - game.attempts.length);
+  const locked = game.status !== 'playing';
+  const maskedResult = (a) => game.hard && game.status === 'playing'
+    ? React.createElement('span',{className:'muted'}, "— hidden —")
+    : React.createElement(React.Fragment,null,
+        React.createElement('span',{className:'badge'},'🐄 Cows ',React.createElement('strong',null,' '+a.cows)),
+        React.createElement('span',{className:'badge'},'🐂 Bulls ',React.createElement('strong',null,' '+a.bulls))
+      );
+  const revealNow = game.hard && game.status !== 'playing';
+  return React.createElement('div',{className:'card'},
+    React.createElement('div',{className:'topbar'},
+      React.createElement('div',null,
+        React.createElement('h1',null,'Cows & Bulls'),
+        React.createElement('div',{className:'sub'},'Guess the 5-digit number in 10 tries. Repeats allowed. First digit can’t be 0.')
+      ),
+      React.createElement('label',{className:'toggle',title:'Hard Mode hides the cows/bulls counts until the end.'},
+        React.createElement('span',null,'Hard Mode'),
+        React.createElement('div',{className:'switch '+(game.hard?'on':''),onClick:()=>game.setHard(!game.hard)})
+      )
+    ),
+    React.createElement('div',{className:'grid'},
+      React.createElement('div',{className:'row inputRow'},
+        React.createElement('input',{
+          type:'text',inputMode:'numeric',pattern:'\\d*',placeholder:'Enter 5 digits (first ≠ 0)',
+          value:game.input,maxLength:5,disabled:locked,
+          onChange:(e)=>{const v=e.target.value.replace(/[^0-9]/g,'').slice(0,5);e.target.value=v;game.setInput(v);},
+          onKeyDown:(e)=>{if(e.key==='Enter'&&!locked){if(/^[0-9]{5}$/.test(game.input)&&game.input[0]!=='0')game.submit();}}
+        }),
+        React.createElement('button',{onClick:game.submit,disabled:locked||!/^[0-9]{5}$/.test(game.input)||game.input[0]==='0'},'Submit'),
+        React.createElement('button',{className:'ghost',onClick:game.reset},'New Game')
+      ),
+      React.createElement('div',{className:'row'},
+        React.createElement(Chip,null,'Attempts: ',React.createElement('strong',null,' ',game.attempts.length,'/',game.MAX)),
+        React.createElement(Chip,null,'Remaining: ',React.createElement('strong',null,' ',remaining)),
+        React.createElement(Chip,null,'First digit ≠ 0'),
+        React.createElement(Chip,null,'Repeats ✓')
+      ),
+      game.attempts.length===0 ? React.createElement('div',{className:'summary'},
+        React.createElement('div',null,'Type your first guess above and press Enter.'),
+        React.createElement('div',{className:'sub'},'Scoring: A ',React.createElement('strong',null,'bull'),
+          ' means right digit in the right place; a ',React.createElement('strong',null,'cow'),
+          ' means the digit exists but in a different place.')):null,
+      React.createElement('div',{className:'list'},
+        game.attempts.map(a=>React.createElement('div',{key:a.idx,className:'rowItem'},
+          React.createElement('div',{className:'kbd'},'#',a.idx),
+          React.createElement('div',{className:'kbd'},a.guess),
+          revealNow
+            ? React.createElement(React.Fragment,null,
+                React.createElement('span',{className:'badge'},'🐄 Cows ',React.createElement('strong',null,' '+a.cows)),
+                React.createElement('span',{className:'badge'},'🐂 Bulls ',React.createElement('strong',null,' '+a.bulls))
+              )
+            : maskedResult(a)
+        ))
+      ),
+      (game.status!=='playing') && React.createElement('div',{className:'summary'},
+        React.createElement('div',{className:game.status==='won'?'statusWin':'statusLose'},
+          game.status==='won'?'You cracked it! 🎉':'Out of attempts.'),
+        React.createElement('div',{className:'sub'},
+          'Answer: ',React.createElement('strong',null,game.target),
+          game.hard?' • Hard Mode results revealed above.':'')
+      ),
+      React.createElement('div',{className:'help'},
+        React.createElement('ul',null,
+          React.createElement('li',null,'You have 10 attempts to get 5 cows and 5 bulls.'),
+          React.createElement('li',null,'Digits can repeat, but the first digit can’t be 0.'),
+          React.createElement('li',null,'Hard Mode: cows/bulls are hidden until you win/lose.')
+        )
+      ),
+      React.createElement('div',{className:'foot'},
+        React.createElement('div',null,'No data is collected. Everything runs in your browser.'),
+        React.createElement('div',{className:'spacer'}),
+        React.createElement('div',null,'Built for students ✨')
+      )
+    )
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
